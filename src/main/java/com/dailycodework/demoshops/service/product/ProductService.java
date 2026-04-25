@@ -2,6 +2,7 @@ package com.dailycodework.demoshops.service.product;
 
 import com.dailycodework.demoshops.dto.ImageDto;
 import com.dailycodework.demoshops.dto.ProductDto;
+import com.dailycodework.demoshops.exceptions.AlreadyExistsException;
 import com.dailycodework.demoshops.exceptions.ProductNotFoundException;
 import com.dailycodework.demoshops.model.Category;
 import com.dailycodework.demoshops.model.Image;
@@ -39,6 +40,12 @@ private final ModelMapper modelMapper;
         // if No, the save it as a new category
         // then set as the new product category;
 
+        if(productExists(request.getName(), request.getBrand()))
+        {
+            throw new AlreadyExistsException(request.getBrand() + " "+request.getName()+ " already exists, you may update this product instead!");
+
+        }
+
         Category category = Optional
                 .ofNullable(categoryRepository.findByName(request.getCategory().getName()))
                 .orElseGet(() -> {
@@ -56,6 +63,11 @@ private final ModelMapper modelMapper;
         request.setCategory(category);
         return  productRepository.save(createProduct(request, category));
 
+    }
+
+    private boolean productExists(String name, String brand)
+    {
+        return productRepository.existsByNameAndBrand(name, brand);
     }
 
     private Product createProduct(AddProductRequest request, Category category) {

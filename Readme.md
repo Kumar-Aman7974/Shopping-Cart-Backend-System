@@ -462,6 +462,31 @@ mvn -Dtest=ProductServiceTest test
 # Run with coverage report
 mvn test jacoco:report
 
+### TestMu JUnit Assignment (PowerShell)
+
+Run these from project root (`demo-shops`) in PowerShell.
+
+```powershell
+# Option 1: Full Grid URL (recommended if provided by TestMu)
+$env:TESTMU_GRID_URL = "https://<username>:<access_key>@hub.testmuai.com/wd/hub"
+
+# Option 2: Username + Access Key (use this if TESTMU_GRID_URL is not set)
+$env:TESTMU_USERNAME = "<your_testmu_username>"
+$env:TESTMU_ACCESS_KEY = "<your_testmu_access_key>"
+```
+
+```powershell
+# Run only the assignment suite
+.\mvnw -Dtest=TestMuJUnitAssignmentTest test
+```
+
+```powershell
+# Optional: clear env vars after run
+Remove-Item Env:TESTMU_GRID_URL -ErrorAction SilentlyContinue
+Remove-Item Env:TESTMU_USERNAME -ErrorAction SilentlyContinue
+Remove-Item Env:TESTMU_ACCESS_KEY -ErrorAction SilentlyContinue
+```
+
 🚨 Error Handling
 
 HTTP Status Codes

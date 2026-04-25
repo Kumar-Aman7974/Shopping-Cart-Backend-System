@@ -1,5 +1,6 @@
 package com.dailycodework.demoshops.service.user;
 
+import com.dailycodework.demoshops.dto.UserDto;
 import com.dailycodework.demoshops.exceptions.AlreadyExistsException;
 import com.dailycodework.demoshops.exceptions.ResourceNotFoundException;
 import com.dailycodework.demoshops.model.User;
@@ -7,6 +8,10 @@ import com.dailycodework.demoshops.repository.UserRepository;
 import com.dailycodework.demoshops.request.CreateUserRequest;
 import com.dailycodework.demoshops.request.UpdateRequest;
 import lombok.RequiredArgsConstructor;
+import org.modelmapper.ModelMapper;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
@@ -16,6 +21,10 @@ import java.util.Optional;
 public class UserService implements IUserService {
 
     private final UserRepository userRepository;
+
+    private final ModelMapper modelMapper;
+
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public User getUserById(Long userId) {
@@ -33,7 +42,7 @@ public class UserService implements IUserService {
                 .map(req -> {
                     User user = new User();
                     user.setEmail(request.getEmail());
-                    user.setPassword(request.getPassword());
+                    user.setPassword(passwordEncoder.encode(request.getPassword()));
                     user.setFirstName(request.getFirstName());
                     user.setLastName(request.getLastName());
                     return  userRepository.save(user);
@@ -55,13 +64,37 @@ public class UserService implements IUserService {
     }
 
     @Override
-    public void deleteUser(Long userId) {
+    public User deleteUser(Long userId) {
         // first get the userID
          userRepository.findById(userId)
                  .ifPresentOrElse(userRepository::delete, () -> {
                      throw new ResourceNotFoundException("User not found!");
                  });
 
+        return null;
     }
+
+    @Override
+    public UserDto convertUserToDto(User user)
+    {
+        return  modelMapper.map(user, UserDto.class);
+    }
+
+    // i have created a method which convert to the User UserDto
+    // so why we are doing @Override and pull the interface and what's the benefit and what if not;
+
+
+    @Override
+    public User getAuthenticatedUser() {
+
+        Authentication   authentication = SecurityContextHolder.getContext().getAuthentication();
+        String email = authentication.getName();
+
+
+        return userRepository.findByEmail(email);
+    }
+
+
+
 }
 

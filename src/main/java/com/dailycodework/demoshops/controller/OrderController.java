@@ -10,7 +10,6 @@ import com.dailycodework.demoshops.service.user.IUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.accept.ApiVersionResolver;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -32,7 +31,8 @@ public class OrderController {
             // Instead of returning the raw order. we are going to return the orderDto
             //Order order = orderService.placeOrder(userId);
             Order order = orderService.placeOrder(userId);
-            return ResponseEntity.ok(new ApiResponse("Item Order Success!", order));
+            OrderDto orderDto = orderService.convertToDto(order);
+            return ResponseEntity.ok(new ApiResponse("Item Order Success!", orderDto));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiResponse("Error Occured!", e.getMessage()));
         }

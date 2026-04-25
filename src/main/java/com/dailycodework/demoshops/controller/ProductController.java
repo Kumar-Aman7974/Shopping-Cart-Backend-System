@@ -2,6 +2,7 @@ package com.dailycodework.demoshops.controller;
 
 
 import com.dailycodework.demoshops.dto.ProductDto;
+import com.dailycodework.demoshops.exceptions.AlreadyExistsException;
 import com.dailycodework.demoshops.exceptions.ResourceNotFoundException;
 import com.dailycodework.demoshops.model.Product;
 import com.dailycodework.demoshops.request.AddProductRequest;
@@ -12,14 +13,14 @@ import com.dailycodework.demoshops.service.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import javax.swing.text.IconView;
 import java.util.EventListenerProxy;
 import java.util.List;
 
-import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
-import static org.springframework.http.HttpStatus.NOT_FOUND;
+import static org.springframework.http.HttpStatus.*;
 
 @RestController
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ import static org.springframework.http.HttpStatus.NOT_FOUND;
 public class ProductController {
 
     private final IProductService productService;
+
 
 
     @GetMapping("/all")
@@ -68,6 +70,7 @@ public class ProductController {
     }
 
 
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping("/add")
     public ResponseEntity<ApiResponse> addProduct(@RequestBody AddProductRequest product)
     {
@@ -75,24 +78,21 @@ public class ProductController {
         try {
             Product theProduct = productService.addProduct(product);
             ProductDto productDto  = productService.convertToDto(theProduct);
-//Which HTTP status should be used when creating a resource?
-//
-//Correct answer:
-//
-//201 CREATED
+
             return  ResponseEntity.status(HttpStatus.CREATED)
                     .body(new ApiResponse("Add product success!", productDto));
 
         }
-        catch (Exception e) {
+        catch (AlreadyExistsException e) {
 
-            return ResponseEntity.status(INTERNAL_SERVER_ERROR)
+            return ResponseEntity.status(CONFLICT)
                     .body(new ApiResponse(e.getMessage(), null));
 
         }
     }
 
 
+    @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PutMapping("/product/{productId}/update")
     public ResponseEntity<ApiResponse>  updateProduct(@RequestBody ProductUpdateRequest request, @PathVariable Long productId)
 
@@ -113,6 +113,7 @@ public class ProductController {
 
 
 
+    @PreAuthorize("('ROLE_ADMIN')")
     @DeleteMapping("/product/{productId}/delete")
     public ResponseEntity<ApiResponse> deleteProduct(@PathVariable Long productId)
     {

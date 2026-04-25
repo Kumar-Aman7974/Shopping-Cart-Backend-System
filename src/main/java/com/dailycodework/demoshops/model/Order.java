@@ -2,6 +2,7 @@ package com.dailycodework.demoshops.model;
 
 
 import com.dailycodework.demoshops.enums.OrderStatus;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,6 +17,9 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @Entity
+
+
+@Table(name = "orders")
 public class Order {
 
     @Id
@@ -30,6 +34,7 @@ public class Order {
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<OrderItem> orderItems = new HashSet<>();
+
 
 
     @ManyToOne

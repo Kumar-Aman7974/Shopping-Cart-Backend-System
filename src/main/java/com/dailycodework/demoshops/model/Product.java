@@ -32,7 +32,8 @@ public class Product {
     // multiple products that belongs to one Category M:1 relationship
     @ManyToOne(cascade = CascadeType.ALL) // Why we are used here?
     @JoinColumn(name = "category_id")
-    @JsonManagedReference(value = "category-product")
+  //  @JsonManagedReference(value = "category-product")
+    @JsonIgnore
     private Category category;
 
 
@@ -40,7 +41,7 @@ public class Product {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true) // which means once a product is being to be deleted
     //  all the images that are associated with that products are going to be deleted along;
     // because we are used orphanRemoval = true;
-    @JsonManagedReference(value = "product-image")
+    //@JsonManagedReference(value = "product-image")
     private List<Image> images;
 
 

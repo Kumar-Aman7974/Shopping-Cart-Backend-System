@@ -1,7 +1,6 @@
 package com.dailycodework.demoshops.service.order;
 
 import com.dailycodework.demoshops.dto.OrderDto;
-import com.dailycodework.demoshops.dto.orderItemDto;
 import com.dailycodework.demoshops.enums.OrderStatus;
 import com.dailycodework.demoshops.exceptions.ResourceNotFoundException;
 import com.dailycodework.demoshops.model.Cart;
@@ -11,6 +10,7 @@ import com.dailycodework.demoshops.model.Product;
 import com.dailycodework.demoshops.repository.OrderRepository;
 import com.dailycodework.demoshops.repository.ProductRepository;
 import com.dailycodework.demoshops.service.cart.CartService;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -34,6 +34,7 @@ public class OrderService  implements IOrderService{
 
     private final ModelMapper modelMapper;
 
+    @Transactional
     @Override
     public Order placeOrder(Long userId) {
         Cart cart = cartService.getCartByUserId(userId);
@@ -114,7 +115,8 @@ public class OrderService  implements IOrderService{
     }
 
 
-    private OrderDto convertToDto(Order order)
+    @Override
+    public OrderDto convertToDto(Order order)
 
     {
 

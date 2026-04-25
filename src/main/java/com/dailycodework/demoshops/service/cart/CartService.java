@@ -2,6 +2,7 @@ package com.dailycodework.demoshops.service.cart;
 
 import com.dailycodework.demoshops.exceptions.ResourceNotFoundException;
 import com.dailycodework.demoshops.model.Cart;
+import com.dailycodework.demoshops.model.User;
 import com.dailycodework.demoshops.repository.CartItemRepository;
 import com.dailycodework.demoshops.repository.CartRepository;
 import lombok.RequiredArgsConstructor;
@@ -9,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
@@ -76,10 +78,15 @@ public class CartService  implements ICartService{
 //    }
 
     @Override
-    public Long initializeNewCart() {
+    public Cart initializeNewCart(User user) {
 
-        Cart newCart = new Cart();
-        return cartRepository.save(newCart).getId();
+        return Optional.ofNullable(getCartByUserId(user.getId()))
+                .orElseGet( () -> {
+                   Cart cart = new Cart();
+                   cart.setUser(user);
+                   return cartRepository.save(cart);
+                        });
+
     }
 
     @Override

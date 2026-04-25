@@ -34,7 +34,7 @@ public class Image {
     // Set the name of the column using Join
 //    @JsonIgnore
     @JoinColumn(name = "product_id")
-    @JsonBackReference(value = "product-image")
+    //@JsonBackReference(value = "product-image")
     private Product product;
 
 

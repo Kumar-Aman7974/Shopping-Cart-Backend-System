@@ -30,7 +30,8 @@ public class Category {
 
     // One category can have multiple products means 1:M relationship
     @OneToMany(mappedBy = "category")
-    @JsonBackReference(value = "category-product")
+   // @JsonBackReference(value = "category-product")
+    @JsonIgnore
     private List<Product> products;
 
 
