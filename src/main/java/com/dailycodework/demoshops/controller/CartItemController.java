@@ -39,10 +39,10 @@ public class CartItemController {
 
 
 
-            // Here two things Controller is doing . first one is, take the data from the user and then go to the serviceMethod  using the call
+            // Here two things Controller is doing.first one is, take the data from the user and then go to the serviceMethod  using the call
             // the service class method and then  check this and return
             // Second is , return if data is empty and another type error so we  are used ResponseEntity.status() and create a new object of the new ApiResponse
-            //
+
             //call this cartItemService
             cartItemService.addItemToCart(cart.getId(), productId, quantity);
             return ResponseEntity.ok(new ApiResponse("Add Item Success", null));
