@@ -115,8 +115,6 @@ class ProductServiceTest {
 
             // VERIFY : Make sure the repository was actually called
             verify(productRepository).findById(productId);
-
-
         }
 
         @Test
@@ -213,16 +211,106 @@ class ProductServiceTest {
             when(productRepository.existsByNameAndBrand("MacBook Pro", "Apple"))
                     .thenReturn(true);
 
-            //ACT & ASSERT
-            assertThatThrownBy( () -> productService.addProduct(addProductRequest))
-                    .isInstanceOf(AlreadyExistsException.class)
-                    .hasMessage("Apple MacBook Pro already exists, you may update this product instead!");
+            // ACT & ASSERT
+            AlreadyExistsException exception = assertThrows(AlreadyExistsException.class, () ->
+                    {
+                        productService.addProduct(addProductRequest);
+
+                    });
+                        // Verify the exception message
+                        assertTrue(exception.getMessage().contains("Apple MacBook Pro already exists"));
+
 
             // VERIFY: Ensure we never tried to save anything
             verify(productRepository, never()).save(any());
             verify(categoryRepository, never()).save(any());
         }
 
+        // CASE 2: Product is New, but Category ALREADY Exists in DB
+        @Test
+        @DisplayName("Should use existing category if found in DB")
+        void addProduct_New_Product_Existing_SavesProduct() {
+            //ARRANGE: Product doesn't exist yet
+            when(productRepository.existsByNameAndBrand("MacBook Pro","Apple"))
+                    .thenReturn(false);
+
+            // 2. Category Electronics already exists in DB
+            Category existingCategory = new Category("Electronics");
+            ReflectionTestUtils.setField(existingCategory, "id", 10L);//Simulate DB ID
+
+            when(categoryRepository.findByName("Electronics"))
+                    .thenReturn(existingCategory);
+
+            // 3. Mock the product save to return the product with an ID
+            when(productRepository.save(any(Product.class)))
+                    .thenAnswer(invocation -> {
+                        Product productToSave = invocation.getArgument(0);
+                        ReflectionTestUtils.setField(productToSave, "id", 100L);//Simulate DB auto-generating ID
+
+                        return productToSave;
+                    });
+
+            // ACT
+            Product savedProduct = productService.addProduct(addProductRequest);
+
+            // ASSERT
+            assertNotNull(savedProduct);
+            assertEquals(100L, savedProduct.getId());
+            assertEquals("MacBook Pro", savedProduct.getName());
+
+            //CRITICAL: Verify it used the existing category
+            assertNotNull(savedProduct.getCategory());
+            assertEquals(10L, savedProduct.getCategory().getId());
+            assertEquals("Electronics", savedProduct.getCategory().getName());
+
+
+            // VERIFY: Category save should NEVER be called because it already existed!
+            verify(categoryRepository, never()).save(any());
+            verify(productRepository, times(1)).save(any(Product.class));
+
+
+        }
+
+        // CASE 3: Product is New, AND Category DOES NOT Exist in DB
+        @Test
+        @DisplayName(" Should create and save new category if not found in DB")
+        void addProduct_NewProduct_NewCategory_SavesBoth() {
+            // ARRANGE
+            when(productRepository.existsByNameAndBrand("MacBook Pro","Apple"))
+                    .thenReturn(false);
+
+            when(categoryRepository.findByName("Electronics"))
+                    .thenReturn(null);
+
+            when(categoryRepository.save(any(Category.class)))
+                    .thenAnswer(invocation -> {
+                        Category categoryToSave = invocation.getArgument(0);
+                        ReflectionTestUtils.setField(categoryToSave, "id", 20L);
+                        return categoryToSave;
+                    });
+
+            when(productRepository.save(any(Product.class)))
+                    .thenAnswer(invocation -> {
+                        Product productToSave = invocation.getArgument(0);
+                        ReflectionTestUtils.setField(productToSave, "id", 200L);
+                        return productToSave;
+                    });
+
+            // ACT
+            Product savedProduct = productService.addProduct(addProductRequest);
+
+            // ASSERT (JUnit 5 style)
+            assertNotNull(savedProduct);
+            assertEquals(200L, savedProduct.getId());
+
+            assertNotNull(savedProduct.getCategory());
+            assertEquals(20L, savedProduct.getCategory().getId());
+            assertEquals("Electronics", savedProduct.getCategory().getName());
+
+            // VERIFY
+            verify(categoryRepository, times(1)).save(any(Category.class));
+            verify(productRepository, times(1)).save(any(Product.class));
+        }
 
     }
 
