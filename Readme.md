@@ -1,7 +1,7 @@
 # 🛒 Shopping Cart Backend System
 
-[![Java](https://img.shields.io/badge/Java-17-blue.svg)](https://www.oracle.com/java/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-2.7.0-brightgreen.svg)](https://spring.io/projects/spring-boot)
+[![Java](https://img.shields.io/badge/Java-21-blue.svg)](https://www.oracle.com/java/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.5-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Maven](https://img.shields.io/badge/Maven-3.8.0-red.svg)](https://maven.apache.org/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.0-orange.svg)](https://www.mysql.com/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -63,7 +63,9 @@
 - 📝 **Structured Logging** for debugging and monitoring
 - 🔌 **Layered Architecture** (Controller → Service → Repository)
 - 💉 **Dependency Injection** using Spring IoC container
-- 🧪 **Testable Code** with separation of concerns
+- 🧪 **Comprehensive Unit & Integration Testing** with JUnit 5 and Mockito
+- 🔐 **JWT Token-Based Authentication** with secure token generation and validation
+- 👥 **Role-Based Access Control (RBAC)** with @PreAuthorize annotations for endpoint protection
 
 ## 🛠️ Technology Stack
 
@@ -74,15 +76,20 @@
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| **Java** | 17 LTS | Core programming language |
-| **Spring Boot** | 2.7.x | Application framework |
+| **Java** | 21 LTS | Core programming language |
+| **Spring Boot** | 3.3.5 | Application framework |
 | **Spring Data JPA** | - | ORM and database operations |
+| **Spring Security** | 6.x | Authentication and authorization |
 | **Spring Web MVC** | - | REST API development |
-| **Hibernate** | 5.6.x | JPA implementation |
+| **Hibernate** | 6.x | JPA implementation |
 | **Maven** | 3.8+ | Dependency management |
 | **MySQL** | 8.0+ | Production database |
-| **H2 Database** | - | Development/Testing |
 | **Lombok** | 1.18.x | Boilerplate code reduction |
+| **ModelMapper** | 3.2.0 | Entity-DTO mapping |
+| **JWT (JJWT)** | 0.12.6 | Token-based authentication |
+| **JUnit 5** | 5.10.x | Unit testing framework |
+| **Mockito** | 5.x | Mocking framework for tests |
+| **AssertJ** | 3.25.x | Fluent assertion library |
 | **Validation API** | 2.0+ | Input validation |
 
 ## 🏗️ System Architecture
@@ -108,7 +115,7 @@ Before you begin, ensure you have the following installed:
 ```bash
 # Check Java version
 java --version
-# Should output: Java 17 or higher
+# Should output: Java 21 or higher
 
 # Check Maven version
 mvn --version
@@ -187,22 +194,39 @@ http://localhost:8080/api
 
 Authentication APIs
 Method	Endpoint	Description	Request Body	Response
-POST	/auth/register	Register new user	User details	User object
-POST	/auth/login	User login	Credentials	Auth token
-GET	/users/{id}	Get user profile	-	User details
-PUT	/users/{id}	Update user	Updated details	Updated user
+POST	/api/v1/auth/register	Register new user	User details	User object
+POST	/api/v1/auth/login	User login	Email & password	JWT Token
+GET	/api/v1/users/{id}	Get user profile	-	User details (requires auth)
+PUT	/api/v1/users/{id}	Update user	Updated details	Updated user (requires auth)
+
+**JWT Token Example:**
+After login, the response will contain a JWT token:
+```json
+{
+    "message": "Login successful",
+    "data": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyQGVtYWlsLmNvbSIsImlkIjoxLCJyb2xlcyI6WyJST0xFX1VTRVIiXSwiaWF0IjoxNjAxNjM4MzAwLCJleHAiOjE2MDE2NDE5MDB9.signature"
+}
+```
+
+Use this token in subsequent requests:
+```bash
+curl -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+     http://localhost:8080/api/v1/products/all
+```
 
 Product APIs
-Method	Endpoint	Description	Request Body	Response
-GET	/products	Get all products	-	List of products
-GET	/products/{id}	Get product by ID	-	Product object
-GET	/products/category/{categoryId}	Get products by category	-	List of products
-POST	/products	Create new product	Product details	Created product
-PUT	/products/{id}	Update product	Updated details	Updated product
-DELETE	/products/{id}	Delete product	-	Success message
+Method	Endpoint	Description	Auth Required	Role Required
+GET	/api/v1/products/all	Get all products	No	-
+GET	/api/v1/products/product/{id}/product	Get product by ID	No	-
+GET	/api/v1/products/category/{category}	Get products by category	No	-
+POST	/api/v1/products/add	Create new product	Yes	ROLE_ADMIN
+PUT	/api/v1/products/{id}	Update product	Yes	ROLE_ADMIN
+DELETE	/api/v1/products/{id}	Delete product	Yes	ROLE_ADMIN
 
 Example Request - Create Product:
-POST /api/products
+POST /api/v1/products/add
+Authorization: Bearer <JWT_TOKEN>
+
 {
     "name": "iPhone 15 Pro",
     "brand": "Apple",
@@ -210,7 +234,6 @@ POST /api/products
     "inventory": 50,
     "description": "Latest iPhone with A17 Pro chip",
     "category": {
-        "id": 1,
         "name": "Electronics"
     }
 }
@@ -231,15 +254,17 @@ Example Response:
 
 Cart APIs
 
-Method	Endpoint	Description	Request Body	Response
-GET	/cart/{userId}	Get user's cart	-	Cart object
-POST	/cart/add	Add item to cart	Cart item details	Updated cart
-PUT	/cart/update	Update cart item quantity	Cart item details	Updated cart
-DELETE	/cart/remove/{cartItemId}	Remove from cart	-	Success message
-DELETE	/cart/clear/{userId}	Clear entire cart	-	Success message
+Method	Endpoint	Description	Auth Required
+GET	/api/v1/carts/{userId}	Get user's cart	Yes
+POST	/api/v1/cartItems/add	Add item to cart	Yes
+PUT	/api/v1/cartItems/update	Update cart item quantity	Yes
+DELETE	/api/v1/cartItems/{cartItemId}	Remove from cart	Yes
+DELETE	/api/v1/carts/{userId}/clear	Clear entire cart	Yes
 
 Example Request - Add to Cart:
-POST /api/cart/add
+POST /api/v1/cartItems/add
+Authorization: Bearer <JWT_TOKEN>
+
 {
     "userId": 1,
     "productId": 1,
@@ -247,64 +272,77 @@ POST /api/cart/add
 }
 
 Order APIs
-Method	Endpoint	Description	Request Body	Response
-POST	/orders	Place order	Order details	Order object
-GET	/orders/{userId}	Get user orders	-	List of orders
-GET	/orders/{orderId}	Get order by ID	-	Order details
-PUT	/orders/{orderId}/status	Update order status	Status update	Updated order
-DELETE	/orders/{orderId}	Cancel order	-	Success message
+Method	Endpoint	Description	Auth Required
+POST	/api/v1/orders	Place order	Yes
+GET	/api/v1/orders/{userId}	Get user orders	Yes
+GET	/api/v1/orders/order/{orderId}	Get order by ID	Yes
+PUT	/api/v1/orders/{orderId}/status	Update order status	Yes (ADMIN only)
+DELETE	/api/v1/orders/{orderId}	Cancel order	Yes
 
 Category APIs
-Method	Endpoint	Description	Request Body	Response
-GET	/categories	Get all categories	-	List of categories
-GET	/categories/{id}	Get category by ID	-	Category object
-POST	/categories	Create category	Category name	Created category
-PUT	/categories/{id}	Update category	Updated name	Updated category
-DELETE	/categories/{id}	Delete category	-	Success message
+Method	Endpoint	Description	Auth Required	Role Required
+GET	/api/v1/categories	Get all categories	No	-
+GET	/api/v1/categories/{id}	Get category by ID	No	-
+POST	/api/v1/categories	Create category	Yes	ROLE_ADMIN
+PUT	/api/v1/categories/{id}	Update category	Yes	ROLE_ADMIN
+DELETE	/api/v1/categories/{id}	Delete category	Yes	ROLE_ADMIN
 
 🗄️ Database Schema
 Entity Relationship Diagram
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│    User     │     │    Cart     │     │   Order     │
-├─────────────┤     ├─────────────┤     ├─────────────┤
-│ id (PK)     │────▶│ id (PK)     │     │ id (PK)     │
-│ firstName   │     │ user_id(FK) │     │ user_id(FK) │◀────┐
-│ lastName    │     │ totalAmount │     │ orderDate   │     │
-│ email       │     └─────────────┘     │ totalAmount │     │
-│ password    │           │             │ status      │     │
-│ createdAt   │           │             └─────────────┘     │
-└─────────────┘           │                    │           │
-                          ▼                    ▼           │
-                   ┌─────────────┐     ┌─────────────┐     │
-                   │  CartItem   │     │  OrderItem  │     │
-                   ├─────────────┤     ├─────────────┤     │
-                   │ id (PK)     │     │ id (PK)     │     │
-                   │ cart_id(FK) │     │ order_id(FK)│─────┘
-                   │ product_id  │     │ product_id  │
-                   │ quantity    │     │ quantity    │
-                   │ price       │     │ price       │
-                   └─────────────┘     └─────────────┘
-                          │                    │
-                          ▼                    ▼
-                   ┌─────────────────────────────┐
-                   │          Product            │
-                   ├─────────────────────────────┤
-                   │ id (PK)                     │
-                   │ name                        │
-                   │ brand                       │
-                   │ price                       │
-                   │ inventory                   │
-                   │ description                 │
-                   │ category_id (FK)            │
-                   └─────────────────────────────┘
-                                   │
-                                   ▼
-                   ┌─────────────────────────────┐
-                   │          Category           │
-                   ├─────────────────────────────┤
-                   │ id (PK)                     │
-                   │ name                        │
-                   └─────────────────────────────┘
+
+**Authentication & User Management:**
+```
+┌──────────────┐         ┌──────────────┐         ┌──────────────┐
+│     Role     │         │    User      │         │   Cart       │
+├──────────────┤         ├──────────────┤         ├──────────────┤
+│ id (PK)      │◀────────│ id (PK)      │────────▶│ id (PK)      │
+│ name         │ (M2M)   │ firstName    │         │ user_id(FK)  │
+└──────────────┘         │ lastName     │         │ totalAmount  │
+                         │ email        │         └──────────────┘
+                         │ password     │              │
+                         │ createdAt    │              ▼
+                         └──────────────┘    ┌──────────────────┐
+                                            │    CartItem      │
+                                            ├──────────────────┤
+                                            │ id (PK)          │
+                                            │ cart_id(FK)      │
+                                            │ product_id(FK)   │
+                                            │ quantity         │
+                                            └──────────────────┘
+```
+
+**Order Management:**
+```
+┌──────────────────┐       ┌──────────────────┐       ┌──────────────┐
+│      Order       │◀──────│    OrderItem     │──────▶│   Product    │
+├──────────────────┤       ├──────────────────┤       ├──────────────┤
+│ id (PK)          │       │ id (PK)          │       │ id (PK)      │
+│ user_id(FK)      │       │ order_id(FK)     │       │ name         │
+│ orderDate        │       │ product_id(FK)   │       │ brand        │
+│ totalAmount      │       │ quantity         │       │ price        │
+│ status           │       │ price            │       │ inventory    │
+└──────────────────┘       └──────────────────┘       │ category_id  │
+                                                      └──────────────┘
+                                                             │
+                                                             ▼
+                                                      ┌──────────────┐
+                                                      │   Category   │
+                                                      ├──────────────┤
+                                                      │ id (PK)      │
+                                                      │ name         │
+                                                      └──────────────┘
+```
+
+**Product Images:**
+```
+┌──────────────┐         ┌──────────────┐
+│   Product    │────────▶│    Image     │
+├──────────────┤(1:M)    ├──────────────┤
+│ id (PK)      │         │ id (PK)      │
+│ name         │         │ product_id   │
+│ ...          │         │ image_url    │
+└──────────────┘         └──────────────┘
+```
 
 
 📁 Project Structure
@@ -364,21 +402,41 @@ Shopping-Cart-Backend-System/
 │   │   │   ├── response/                      # Response Objects
 │   │   │   │   └── ApiResponse.java
 │   │   │   │
-│   │   │   ├── exceptions/                    # Custom Exceptions
-│   │   │   │   ├── ResourceNotFoundException.java
-│   │   │   │   ├── ProductNotFoundException.java
-│   │   │   │   └── AlreadyExistsException.java
-│   │   │   │
-│   │   │   └── enums/                         # Enumerations
-│   │   │       └── OrderStatus.java
+| │   │   │   ├── exceptions/                    # Custom Exceptions
+| │   │   │   │   ├── ResourceNotFoundException.java
+| │   │   │   │   ├── ProductNotFoundException.java
+| │   │   │   │   └── AlreadyExistsException.java
+| │   │   │   │
+| │   │   │   ├── security/                       # Security & JWT Configuration
+| │   │   │   │   ├── config/
+| │   │   │   │   │   └── ShopConfig.java         # Security beans, JWT config
+| │   │   │   │   ├── Jwt/
+| │   │   │   │   │   ├── JwtUtils.java           # JWT token generation & validation
+| │   │   │   │   │   ├── AuthTokenFilter.java    # JWT request filter
+| │   │   │   │   │   └── JwtAutEntryPoint.java   # JWT error handler
+| │   │   │   │   ├── user/
+| │   │   │   │   │   └── ShopUserDetails.java    # User principal for Spring Security
+| │   │   │   │   └── service/
+| │   │   │   │       └── ShopUserDetailsService.java  # User details service
+| │   │   │   │
+| │   │   │   ├── enums/                         # Enumerations
+| │   │   │   │   └── OrderStatus.java
+| │   │   │   │
+| │   │   │   └── data/                          # Data Initialization
+| │   │   │       └── DataInitializer.java       # Seed default roles and users
 │   │   │
 │   │   └── resources/
 │   │       ├── application.properties        # Configuration
 │   │       └── static/                       # Static resources
 │   │
-│   └── test/                                  # Unit Tests
-│       └── java/com/dailycodework/demoshops/
-│           └── DemoShopsApplicationTests.java
+| │   └── test/                                  # Unit & Integration Tests
+| │       └── java/com/dailycodework/demoshops/
+| │           ├── service/
+| │           │   ├── product/
+| │           │   │   └── ProductServiceTest.java      # Service layer tests with Mockito
+| │           │   └── cart/
+| │           │       └── CartServiceTest.java         # Cart service tests
+| │           └── DemoShopsApplicationTests.java       # Application context tests
 │
 ├── pom.xml                                    # Maven configuration
 ├── mvnw                                       # Maven wrapper script
@@ -434,58 +492,151 @@ public class ProductController {
     }
 }
 
-Example 3: Global Exception Handler
-@ControllerAdvice
-public class GlobalExceptionHandler {
-    
-    @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<ApiResponse> handleResourceNotFound(
-            ResourceNotFoundException ex) {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-            .body(new ApiResponse("error", ex.getMessage()));
-    }
-    
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse> handleGenericException(Exception ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-            .body(new ApiResponse("error", "An unexpected error occurred"));
-    }
-}
+| Example 3: Global Exception Handler
+| @ControllerAdvice
+| public class GlobalExceptionHandler {
+|     
+|     @ExceptionHandler(ResourceNotFoundException.class)
+|     public ResponseEntity<ApiResponse> handleResourceNotFound(
+|             ResourceNotFoundException ex) {
+|         return ResponseEntity.status(HttpStatus.NOT_FOUND)
+|             .body(new ApiResponse("error", ex.getMessage()));
+|     }
+|     
+|     @ExceptionHandler(Exception.class)
+|     public ResponseEntity<ApiResponse> handleGenericException(Exception ex) {
+|         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+|             .body(new ApiResponse("error", "An unexpected error occurred"));
+|     }
+| }
+| 
+| Example 4: JWT Authentication & Role-Based Access Control
+| @RestController
+| @RequestMapping("${api.prefix}/products")
+| public class ProductController {
+|     
+|     @PreAuthorize("hasRole('ROLE_ADMIN')")  // Only ADMIN can add products
+|     @PostMapping("/add")
+|     public ResponseEntity<ApiResponse> addProduct(@RequestBody AddProductRequest request) {
+|         try {
+|             Product theProduct = productService.addProduct(request);
+|             ProductDto productDto = productService.convertToDto(theProduct);
+|             return ResponseEntity.status(HttpStatus.CREATED)
+|                 .body(new ApiResponse("Item added successfully!", productDto));
+|         } catch (AlreadyExistsException e) {
+|             return ResponseEntity.status(HttpStatus.CONFLICT)
+|                 .body(new ApiResponse(e.getMessage(), null));
+|         }
+|     }
+|     
+|     @GetMapping("/all")  // Public endpoint
+|     public ResponseEntity<ApiResponse> getAllProducts() {
+|         List<Product> products = productService.getAllProducts();
+|         List<ProductDto> convertedProducts = productService.getConvertedProducts(products);
+|         return ResponseEntity.ok(new ApiResponse("success", convertedProducts));
+|     }
+| }
+| 
+| Example 5: User Authentication with JWT Token
+| @RestController
+| @RequestMapping("${api.prefix}/auth")
+| public class AuthController {
+|     
+|     @PostMapping("/login")
+|     public ResponseEntity<ApiResponse> login(@RequestBody LoginRequest request) {
+|         try {
+|             Authentication authentication = authenticationManager.authenticate(
+|                 new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+|             );
+|             
+|             String jwt = jwtUtils.generateTokenForUser(authentication);
+|             return ResponseEntity.ok(new ApiResponse("Login successful", jwt));
+|         } catch (AuthenticationException e) {
+|             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+|                 .body(new ApiResponse("Invalid credentials", null));
+|         }
+|     }
+| }
+| 
+| Example 6: Unit Testing with JUnit 5 & Mockito
+| @ExtendWith(MockitoExtension.class)
+| class ProductServiceTest {
+|     
+|     @Mock
+|     private ProductRepository productRepository;
+|     
+|     @Mock
+|     private CategoryRepository categoryRepository;
+|     
+|     @InjectMocks
+|     private ProductService productService;
+|     
+|     @BeforeEach
+|     void setUp() {
+|         // Initialize test data
+|     }
+|     
+|     @Test
+|     @DisplayName("Should return product when ID exists")
+|     void getProductById_ExistingId_ReturnsProduct() {
+|         // Given
+|         Long productId = 1L;
+|         Product expectedProduct = new Product("iPhone", "Apple", BigDecimal.valueOf(999.99), 10, "Latest iPhone", null);
+|         when(productRepository.findById(productId)).thenReturn(Optional.of(expectedProduct));
+|         
+|         // When
+|         Product result = productService.getProductById(productId);
+|         
+|         // Then
+|         assertThat(result).isNotNull();
+|         assertThat(result.getName()).isEqualTo("iPhone");
+|         verify(productRepository).findById(productId);
+|     }
+|     
+|     @Test
+|     @DisplayName("Should throw exception when product does not exist")
+|     void getProductById_NonExistentId_ThrowsException() {
+|         // Given
+|         Long productId = 999L;
+|         when(productRepository.findById(productId)).thenReturn(Optional.empty());
+|         
+|         // When & Then
+|         assertThatThrownBy(() -> productService.getProductById(productId))
+|             .isInstanceOf(ProductNotFoundException.class);
+|     }
+| }
 
 🧪 Testing
+
+**Test Framework & Tools:**
+- **JUnit 5** - Modern unit testing framework with parameterized and nested test support
+- **Mockito** - Powerful mocking framework for isolating units under test
+- **AssertJ** - Fluent assertions for expressive test conditions
+
+**Run tests:**
+```bash
 # Run all tests
 mvn test
 
 # Run specific test class
 mvn -Dtest=ProductServiceTest test
 
-# Run with coverage report
+# Run specific test method
+mvn -Dtest=ProductServiceTest#getProductById_ExistingId_ReturnsProduct test
+
+# Run with coverage report (requires jacoco plugin)
 mvn test jacoco:report
-
-### TestMu JUnit Assignment (PowerShell)
-
-Run these from project root (`demo-shops`) in PowerShell.
-
-```powershell
-# Option 1: Full Grid URL (recommended if provided by TestMu)
-$env:TESTMU_GRID_URL = "https://<username>:<access_key>@hub.testmuai.com/wd/hub"
-
-# Option 2: Username + Access Key (use this if TESTMU_GRID_URL is not set)
-$env:TESTMU_USERNAME = "<your_testmu_username>"
-$env:TESTMU_ACCESS_KEY = "<your_testmu_access_key>"
 ```
 
-```powershell
-# Run only the assignment suite
-.\mvnw -Dtest=TestMuJUnitAssignmentTest test
-```
-
-```powershell
-# Optional: clear env vars after run
-Remove-Item Env:TESTMU_GRID_URL -ErrorAction SilentlyContinue
-Remove-Item Env:TESTMU_USERNAME -ErrorAction SilentlyContinue
-Remove-Item Env:TESTMU_ACCESS_KEY -ErrorAction SilentlyContinue
-```
+**Testing Patterns Used:**
+- `@ExtendWith(MockitoExtension.class)` for dependency injection of mocks
+- `@Mock` for mocking dependencies
+- `@InjectMocks` for injecting mocks into service under test
+- `@BeforeEach` for test data setup
+- `@Nested` and `@DisplayName` for organizing and describing test cases
+- AssertJ fluent assertions: `assertThat().isEqualTo().isNotNull()`
+- Mockito verification: `verify(repository).findById()`
+- `assertThatThrownBy()` for exception testing
 
 🚨 Error Handling
 
@@ -500,18 +651,41 @@ Status Code	Description	Usage
 
 
 🔒 Security
-Security Features Implemented
-✅ Password encryption (BCrypt)
-✅ Input validation
-✅ SQL injection prevention (JPA)
-✅ CORS configuration
-✅ Rate limiting ready
 
-Future Security Enhancements
-JWT authentication
-Role-based access control (RBAC)
-API rate limiting
-Request validation filters
+**Security Features Implemented:**
+✅ **JWT Token-Based Authentication** - Stateless authentication using JSON Web Tokens (JJWT 0.12.6)
+✅ **Role-Based Access Control (RBAC)** - Fine-grained endpoint protection using `@PreAuthorize("hasRole('ROLE_ADMIN')")` and `@PreAuthorize("hasRole('ROLE_USER')")`
+✅ **Password Encryption** - BCryptPasswordEncoder for secure password hashing
+✅ **Token Validation** - Comprehensive token validation with expiration checks
+✅ **Security Filter Chain** - JWT authentication filter (`AuthTokenFilter`) integrated into Spring Security
+✅ **Default Users** - DataInitializer creates 5 ROLE_USER and 2 ROLE_ADMIN users (password: "12345") for testing
+✅ **Input Validation** - Jakarta Bean Validation for request validation
+✅ **SQL Injection Prevention** - JPA parameterized queries
+✅ **Exception Security** - Proper error handling without exposing system details
+
+**JWT Token Details:**
+- **Token Format**: `Bearer <JWT_TOKEN>`
+- **Expiration**: 1 hour (configurable via `auth.token.expirationInMils`)
+- **Secret Key**: Hex-encoded secret in `application.properties`
+- **Claims**: Includes user ID, email, and roles
+
+**Authentication Flow:**
+1. User calls `/api/v1/auth/login` with email and password
+2. Server validates credentials using Spring Security's AuthenticationManager
+3. Server generates JWT token via `JwtUtils.generateTokenForUser()`
+4. Client stores token and includes it in subsequent requests: `Authorization: Bearer <token>`
+5. `AuthTokenFilter` intercepts requests and validates token
+6. If valid, user identity and roles are loaded into SecurityContext
+
+**Default Credentials (for development/testing):**
+- **Admin Users**: admin1@email.com, admin2@email.com (password: "12345")
+- **Regular Users**: user1@email.com to user5@email.com (password: "12345")
+
+**Future Security Enhancements:**
+- API rate limiting per user/IP
+- Token refresh mechanism
+- Social login integration (OAuth 2.0)
+- Two-factor authentication (2FA)
 
 🤝 Contributing
 Contributions are what make the open-source community amazing!
