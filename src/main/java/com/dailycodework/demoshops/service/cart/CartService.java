@@ -14,13 +14,13 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Service
-@RequiredArgsConstructor // what do you mean?
+@RequiredArgsConstructor
 public class CartService  implements ICartService{
 
-    @Autowired
+
     private final CartRepository cartRepository;
 
-    @Autowired
+
     private final CartItemRepository cartItemRepository;
 
     // here we are using the Atomic value generator
@@ -43,10 +43,8 @@ public class CartService  implements ICartService{
         // first get the cart by id;
         Cart cart = getCart(id); // here we call the method which we described above;
         cartRepository.deleteAllById(id);
-        cart.getItems().clear();
-        cartRepository.deleteById(id);
-
-
+        cart.getItems().clear();; // orphanRemoval = true will delete the CartItems from DB
+        cartRepository.save(cart); // save empty cart
 
     }
 
