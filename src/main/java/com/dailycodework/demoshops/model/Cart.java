@@ -23,15 +23,14 @@ public class Cart {
     private Long id;
     private BigDecimal totalAmount = BigDecimal.ZERO;
 
-    // This car is one to many items so one cart is to many items;
-    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true) // means once  when a cart is deleted that means
-    // all the cart items is going to be deleted;
+
+    @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL, orphanRemoval = true)
     // -> orphanRemoval = true means when if there's any cart items that is not referenced to by any cart
     //  is going to be removed;
-    private Set<CartItem> items = new HashSet<>();// here we are used set collection framework because we don't want to store duplicate value inside
+    private Set<CartItem> items = new HashSet<>();
     // this cartItem;
 
-    // after 5:30
+
     @OneToOne
     @JoinColumn(name = "user_id")
     private User user;
